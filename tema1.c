@@ -8,6 +8,7 @@
 
 int a = 0;
 pthread_mutex_t mutex;
+pthread_barrier_t barrier;
 
 SortedList lists[50][50];
 SortedList redlist[50];
@@ -78,6 +79,7 @@ void *f_map(void *arg)
         }
         fclose(fi2);
     }
+    pthread_barrier_wait(&barrier);
 
     //siuuu fclose(fi2); //suiii
 	pthread_exit(NULL);
@@ -86,10 +88,12 @@ void *f_map(void *arg)
 void *f_reduce(void *arg)
 {	
 	int thread_id = *(int *)arg;
+    printf("Hi from reducer %d\n", thread_id);
+    printf("\n");
     for(int i=0; i<3; i++){
-        SortedList inter = lists[i][thread_id];
+        SortedList inter = lists[i][thread_id-3];
         while(inter!=NULL){
-            redlist[i] = insert(lists[i][thread_id], inter->value);
+            redlist[thread_id-3] = insert(redlist[thread_id-3], inter->value);
             inter=inter->next;
         }
     }
@@ -99,6 +103,7 @@ void *f_reduce(void *arg)
 int main(int argc, char *argv[])
 {
     //pthread_mutex_init(&mutex, NULL);
+    pthread_barrier_init(&barrier, NULL, 3);
 
     int nrMap = atoi(argv[1]);
     int nrRed = atoi(argv[2]);
@@ -139,12 +144,7 @@ int main(int argc, char *argv[])
     }
 
     for(int i=0; i<nrMap+nrRed; i++){
-        if(i<nrMap){
-            r = pthread_join(threads[i], NULL);
-        }
-        else{
-            r = pthread_join(threads[i], NULL);
-        }
+        r = pthread_join(threads[i], NULL);
 
     }
 
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
     printf("\n");
     printf("\n");
     printf("\nReduced lists should look like this:\n");
-    for(int i=0; i<nrMap; i++){
+    for(int i=0; i<nrRed; i++){
         printf("{");
         SortedList inter = redlist[i];
         while(inter!=NULL){
@@ -178,6 +178,7 @@ int main(int argc, char *argv[])
     printf("\n");
 
     //pthread_mutex_destroy(&mutex);
+    pthread_barrier_destroy(&barrier);
     pthread_exit(NULL);
 
 	return 0;
