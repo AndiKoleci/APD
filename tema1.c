@@ -6,21 +6,17 @@
 
 #include "tema1.h"
 
-int a = 0;
-pthread_mutex_t mutex;
 pthread_barrier_t barrier;
-int nrMap;
-int nrRed;
-
-SortedList MapperLists[50][50];
-SortedList ReducerLists[50];
+pthread_mutex_t mutex;
 
 int isPow(int x, int y){
     //checks if x is something to the power of y
     //ex: 243 is something to the power of 5: 3^5
     //isPow(243, 5) = 1;
     int i;
-    for(i=0; pow(i, y)<=x; i++){
+    if(x==0) return 0;
+    if(x==1) return 1;
+    for(i=2; pow(i, y)<=x; i++){
         if(pow(i, y)==x) {
             return 1;
         }
@@ -30,75 +26,71 @@ int isPow(int x, int y){
 
 void *f(void *arg)
 {	
+    ThreadSctruct9 *tData = arg;
+    int thread_id = tData->thread_id;
+    Structura *d = tData->data;
     
-    int thread_id = *(int *)arg;
-    if(thread_id<nrMap){
-        printf("Hi from thread %d\n", thread_id);
-        //printf("\n");
-        int x, times;
-        char filename1[100];
-        char filename2[100];
-        char num[11];
+    if(thread_id<d->nrMap){
+        while(d->contor<d->contorMax){
+            int x, times;
+            char filename1[100];
+            char num[31];
+            int opened = 0;
 
-        if(thread_id==0) {
-            sprintf(filename1, "test0/in1.txt");
-        }
-        if(thread_id==1) {
-            sprintf(filename1, "test0/in2.txt");
-        }
-        if(thread_id==2) {
-            sprintf(filename1, "test0/in3.txt");
-            sprintf(filename2, "test0/in4.txt");
-        }
-        
-        FILE *fi1;
-        FILE *fi2;
-        fi1 = fopen(filename1, "r");
-        fgets(num, 11, fi1);
-        times = atoi(num); //atoi transforma din string in int
-        for(int i=0; i<times; i++){
-            fgets(num, 11, fi1);
-            x = atoi(num);
-            for(int j=0; j<5; j++){
-                if(isPow(x, j+2)){
-                    MapperLists[thread_id][j] = insert(MapperLists[thread_id][j], x);
-                } 
+            //-1 - nedeschis
+            // 0 - deschis
+            pthread_mutex_lock(&mutex);
+            // if(v[contor]==-1){
+            //     v[contor]=0;
+            //     sprintf(filename1, "%s/in%d.txt", fileStart, contor+1);
+            //     opened=1;
+            // }
+            if (d->contor < d->contorMax) {
+                d->contor++;
+                opened = 1;
+                sprintf(filename1, "%s/in%d.txt", d->fileStart, d->contor);
             }
-        }
-        fclose(fi1);
-
-        if(thread_id==2){
-            fi2 = fopen(filename2, "r");
-            fgets(num, 11, fi2);
-            times = atoi(num);
-            for(int i=0; i<times; i++){
-                fgets(num, 11, fi2);
-                x = atoi(num);
-                for(int j=0; j<5; j++){
-                    if(isPow(x, j+2)){
-                        MapperLists[thread_id][j] = insert(MapperLists[thread_id][j], x);
-                    } 
+            pthread_mutex_unlock(&mutex);
+            
+            if(opened==1){
+                FILE *fi1;
+                fi1 = fopen(filename1, "r");
+                fgets(num, 11, fi1);
+                times = atoi(num); //atoi transforma din string in int
+                //printf("%d", times);
+                for(int i=0; i<times; i++){
+                    fgets(num, 11, fi1);
+                    x = atoi(num);
+                    for(int j=0; j<5; j++){
+                        if(isPow(x, j+2)){
+                            d->MapperLists[thread_id][j] = insert(d->MapperLists[thread_id][j], x);
+                        } 
+                    }
                 }
+                fclose(fi1);
             }
-            fclose(fi2);
         }
-    }
 
+        //printf("Hi from Mapper %d\n", thread_id);
+        //printf("\n");
+        
+    }
+    //mapper
     pthread_barrier_wait(&barrier);
 
-    if(thread_id>=nrMap){
+    //reducer
+    if(thread_id>=d->nrMap){
         //reducer
-        printf("Hi from reducer %d\n", thread_id);
-        printf("\n");
-        for(int i=0; i<nrMap; i++){
-            SortedList inter = MapperLists[i][thread_id-nrMap];
+        //printf("Hi from reducer %d\n", thread_id);
+        for(int i=0; i<d->nrMap; i++){
+            SortedList inter = d->MapperLists[i][thread_id-d->nrMap];
             while(inter!=NULL){
-                ReducerLists[thread_id-nrMap] = insert(ReducerLists[thread_id-nrMap], inter->value);
+                d->ReducerLists[thread_id-d->nrMap] = insert(d->ReducerLists[thread_id-d->nrMap], inter->value);
                 inter=inter->next;
             }
         }
 
-        SortedList inter2 = ReducerLists[thread_id-nrMap];
+        SortedList inter2 = d->ReducerLists[thread_id-d->nrMap];
         int count=1;
         while(inter2->next!=NULL){
             if(inter2->value!=inter2->next->value){
@@ -108,7 +100,7 @@ void *f(void *arg)
         }
         FILE *final;
         char filenamefinal[100];
-        snprintf(filenamefinal, 30, "test0/out%d.txt", thread_id-1);
+        snprintf(filenamefinal, 30, "%s/out%d.txt", d->fileStart, thread_id-1);
         
         final=fopen(filenamefinal, "w");
         fprintf(final, "%d", count);
@@ -120,46 +112,64 @@ void *f(void *arg)
 
 int main(int argc, char *argv[])
 {
-    nrMap = atoi(argv[1]);
-    nrRed = atoi(argv[2]);
-    char* initFile = argv[3];
-    pthread_barrier_init(&barrier, NULL, nrMap+nrRed);
-
-    printf("%d %d %s\n\n", nrMap, nrRed, argv[3]);
+    pthread_barrier_init(&barrier, NULL, atoi(argv[1])+atoi(argv[2]));
+    pthread_mutex_init(&mutex, NULL);
 
     int r;
-    pthread_t threads[nrMap+nrRed];
-	int arg[nrMap+nrRed]; //nr mapperi;
-    int N; //nr documente
-    int E = nrRed+1; //nr exponenti;
-    char docname[100];
+    pthread_t threads[atoi(argv[1])+atoi(argv[2])];
+	ThreadSctruct9 arg[atoi(argv[1])+atoi(argv[2])]; //nr mapperi;
+    char Ni[10]; //nr documente
+    int N;
+    char initFile[100];
+    snprintf(initFile, 30, "%s", argv[3]);
 
     FILE *fi;
-    fi = fopen("test0/test.txt", "r");
-    fscanf(fi, "%d", &N);
-    printf("%d\n", N);
-    for(int i=0; i<=N; i++){
-        fgets(docname, 100, fi);
-        //printf("%s", docname);
-    }
-    fclose(fi);
+    fi = fopen(initFile, "r");
 
-    for(int i=0; i<nrMap+nrRed; i++){
-        arg[i] = i;
+    fgets(Ni, 10, fi);
+    N = atoi(Ni);
+
+    //vectoru v[] va avea marimea N;
+
+    // for(int i=0; i<N; i++){
+    //     fgets(docname, 100, fi);
+    //     //TODO: ADD THESE FILES SOMEWEHERE
+    //     //printf("%s", docname);
+    //     testfile = fopen(docname, "r");
+    //     if(testfile!=NULL){
+    //         printf("%s\n", docname);
+    //         fseek(testfile, 0L, SEEK_END);
+    //         fclose(testfile);
+    //     }
+    // }
+    // fclose(fi);
+
+    char *fileStart = strtok(initFile, "/"); //testX
+
+    Structura data = {
+        .nrMap = atoi(argv[1]),
+        .nrRed = atoi(argv[2]),
+        .fileStart = fileStart, 
+        .contorMax = N
+    };
+
+    for(int i=0; i<atoi(argv[1])+atoi(argv[2]); i++){
+        arg[i].thread_id=i;
+        arg[i].data = &data;
         r = pthread_create(&threads[i], NULL, f, &arg[i]);
 
     }
 
-    for(int i=0; i<nrMap+nrRed; i++){
+    for(int i=0; i<atoi(argv[1])+atoi(argv[2]); i++){
         r = pthread_join(threads[i], NULL);
 
     }
 
     printf("\nMapperLists should look like this:\n");
-    for(int i=0; i<nrMap; i++){
-        for(int j=0; j<nrRed; j++){
+    for(int i=0; i<atoi(argv[1]); i++){
+        for(int j=0; j<atoi(argv[2]); j++){
             printf("{");
-            SortedList inter = MapperLists[i][j];
+            SortedList inter = data.MapperLists[i][j];
             while(inter!=NULL){
                 printf("%d ", inter->value);
                 inter = inter->next;
@@ -170,10 +180,10 @@ int main(int argc, char *argv[])
     }
     printf("\n");
     printf("\n");
-    printf("\nReduced MapperLists should look like this:\n");
-    for(int i=0; i<nrRed; i++){
+    printf("\nReducerLists should look like this:\n");
+    for(int i=0; i<atoi(argv[2]); i++){
         printf("{");
-        SortedList inter = ReducerLists[i];
+        SortedList inter = data.ReducerLists[i];
         while(inter!=NULL){
             printf("%d ", inter->value);
             inter = inter->next;
@@ -185,6 +195,7 @@ int main(int argc, char *argv[])
     printf("\n");
 
     pthread_barrier_destroy(&barrier);
+    pthread_mutex_destroy(&mutex);
     pthread_exit(NULL);
 
 	return 0;
