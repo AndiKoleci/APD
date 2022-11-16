@@ -1,0 +1,62 @@
+Koleci Alexandru - 336CB
+Tema 1 APD - Procesare paralela folosind paradigma Map-Reduce
+
+Fisiere din arhiva:
+    -tema1.c - main
+             - f - functia pentru threaduri
+             - binarySearch - functia cu care calculez daca un numar
+                              trebuie bagat in lista unui mapper
+    -tema1.h - ThreadStruct - structura pentru fiecare thread
+                            - contine id-ul threadului si o alta structura
+             - GlobalStruct - contine variabile ce trebuie pasate tuturor
+                              threadurilor
+             - SortedList - linked list care sorteaza elementul la operatia
+                            de insert. Folosita pentru a retine listele
+                            mapperilor, reducerilor. Este sorted pentru a 
+                            putea mai usor sa verific nr de aparitii unice.
+                            Implementarea am luat-o dintr-un laborator pe care
+                            l-am facut in anul I la SD
+    -Makefile - contine reguli de build si clean
+
+Functia Main:
+Salvez nr de mapperi (M), reduceri (R), si numele fisierului de input din argv, dupa
+care aloc memorie pentru toate listele inlantuite si pentru sirul de nume de fisiere.
+Deschid fisierul de input si salvez toate fisierele din el in fileStrings.
+Pornesc M+R threaduri, astfel: primele M threaduri vor fi mapperi, iar urmatoarele R
+threaduri vor fi reduceri. Fiecare thread va primi ca argument o structura in care
+sunt inglobate id-ul threadului si multe variabile care sunt necesare tuturor
+threadurilor. In final, dau join tuturor threadurilor pentru a astepta sa se 
+termine, si eliberez memoria.
+
+Functia f:
+Diferentierea dintre mapperi si reduceri se va face prin thread_id.
+
+Fiecare mapper va deschide fisiere astfel: cat timp mai exista fisiere
+neparcurse, mapper-ul va creste fileCounter (cate fisiere s-au accesat),
+si ia filename-ul corect din fileString. Aceasta parte am facut-o folosind
+mutex pentru ca acel counter sa creasca cum trebuie si sa nu fie mai multi
+mapperi care sa incerce acelasi fisier. Cand un fisier a fost deschis, 
+citesc pe rand fiecare numar din fisier. Pentru fiecare numar citit, verific
+daca exista un numar X astfel incat numar_citit=x^putere, pentru putere<R+1.
+Daca exista, atunci numarul citit va fi adaugat in lista mapperului pentru
+puterea respectiva. Astfel verific daca un numar poate apartine mai multor liste 
+si il adaug in toate, daca este cazul.
+
+Intre mapperi si reduceri am pus o bariera pentru ca reducerii sa nu acceseze
+listele mapperilor in timp ce alti mapperi inca le scriu.
+
+Fiecare reducer se va ocupa de o singura putere. Se va uita in listele mapperilor
+pentru puterea sa si va combina listele. Lista fiecarui reducer va fi sortata,
+pentru ca numar aparitiile unice astfel: daca lista nu e goala, inseamna ca 
+sigur am o aparitie unica, si dupa, mereu cand numarul curent e diferit de cel 
+imediat de dupa el, inseamna ca mai avem un numar unic, si tot asa. In final, fiecare
+reducer creeaza un fisier in care scrie nr de aparitii unice pt puterea sa.
+
+Functia binarySearch:
+Am ales sa fac cautare binara pentru a eficientiza procesul de aflare a puterilor.
+Functia primeste un capat stanga si un capat dreapta, un numar si o putere.
+Se alege mijlocul (media dintre stanga si dreapta), si verifica daca media indeplineste
+criteriul (media^putere = numar_citit). Daca nu e egala, in functie de intervalul in care
+se afla (intre stanga si mijloc sau mijloc si dreapta), se va apela recursiv cu capetele
+schimbate. Functia returneaza 1 daca exista un numar pt care se indeplineste conditia, 
+altfel intoarce 0.
