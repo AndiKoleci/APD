@@ -17,6 +17,7 @@ Fisiere din arhiva:
                             Implementarea am luat-o dintr-un laborator pe care
                             l-am facut in anul I la SD
     -Makefile - contine reguli de build si clean
+    -README
 
 Functia Main:
 Salvez nr de mapperi (M), reduceri (R), si numele fisierului de input din argv, dupa
@@ -24,9 +25,9 @@ care aloc memorie pentru toate listele inlantuite si pentru sirul de nume de fis
 Deschid fisierul de input si salvez toate fisierele din el in fileStrings.
 Pornesc M+R threaduri, astfel: primele M threaduri vor fi mapperi, iar urmatoarele R
 threaduri vor fi reduceri. Fiecare thread va primi ca argument o structura in care
-sunt inglobate id-ul threadului si multe variabile care sunt necesare tuturor
-threadurilor. In final, dau join tuturor threadurilor pentru a astepta sa se 
-termine, si eliberez memoria.
+sunt inglobate id-ul threadului si alta structura ce contine multe variabile care sunt
+necesare tuturor threadurilor. In final, dau join tuturor threadurilor pentru a 
+astepta sa se termine, si eliberez memoria.
 
 Functia f:
 Diferentierea dintre mapperi si reduceri se va face prin thread_id.
@@ -35,9 +36,9 @@ Fiecare mapper va deschide fisiere astfel: cat timp mai exista fisiere
 neparcurse, mapper-ul va creste fileCounter (cate fisiere s-au accesat),
 si ia filename-ul corect din fileString. Aceasta parte am facut-o folosind
 mutex pentru ca acel counter sa creasca cum trebuie si sa nu fie mai multi
-mapperi care sa incerce acelasi fisier. Cand un fisier a fost deschis, 
+mapperi care sa incerce sa deschida acelasi fisier. Cand un fisier a fost deschis, 
 citesc pe rand fiecare numar din fisier. Pentru fiecare numar citit, verific
-daca exista un numar X astfel incat numar_citit=x^putere, pentru putere<R+1.
+daca exista un numar X astfel incat numar_citit=x^putere, pentru 2<=putere<=R+1.
 Daca exista, atunci numarul citit va fi adaugat in lista mapperului pentru
 puterea respectiva. Astfel verific daca un numar poate apartine mai multor liste 
 si il adaug in toate, daca este cazul.

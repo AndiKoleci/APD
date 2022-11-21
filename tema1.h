@@ -28,7 +28,7 @@ typedef struct{
     GlobalStruct *data;
 }ThreadStruct;
 
-SortedList create(unsigned int value)
+SortedList create(int value)
 {
 
     SortedList list = malloc(sizeof(TNode));
@@ -37,9 +37,9 @@ SortedList create(unsigned int value)
     return list;
 }
 
-SortedList insert(SortedList list, unsigned int element)
+SortedList insert(SortedList list, int element)
 {
-    SortedList ceva = list;
+    SortedList copy = list;
     SortedList inter = create(element);
     if (list == NULL)
     {
@@ -50,12 +50,12 @@ SortedList insert(SortedList list, unsigned int element)
         inter->next = list;
         return inter;
     }
-    while (ceva->next != NULL && ceva->next->value < element)
+    while (copy->next != NULL && copy->next->value < element)
     {
-        ceva = ceva->next;
+        copy = copy->next;
     }
-    inter->next = ceva->next;
-    ceva->next = inter;
+    inter->next = copy->next;
+    copy->next = inter;
 
     return list;
 }

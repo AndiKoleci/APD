@@ -6,12 +6,12 @@
 
 #include "tema1.h"
 
-int binarySearch(unsigned int l, unsigned int r, unsigned int x, int power)
+int binarySearch(int l, int r, int x, int power)
 {
-    unsigned int mid;
+    int mid;
     unsigned long long nr;
 
-    mid = (l+r)/2;
+    mid = (l + r) / 2;
     nr = pow(mid, power);
     if(nr == x) return 1;
     else if(l >= r) return 0;
@@ -22,27 +22,28 @@ int binarySearch(unsigned int l, unsigned int r, unsigned int x, int power)
 
 void *f(void *arg)
 {	
-    ThreadStruct *tData = arg;
-    int thread_id = tData->thread_id;
-    GlobalStruct *d = tData->data;
+    ThreadStruct *threadData = arg;
+    int thread_id = threadData->thread_id;
+    GlobalStruct *g = threadData->data;
 
-    if(thread_id < d->nrMap){ 
-        while(d->fileCounter < d->fileCounterMax){
-            unsigned int x;
+    if(thread_id < g->nrMap){ 
+        while(g->fileCounter < g->fileCounterMax){
+            int x;
             int times;
             char filename1[100];
             char num[31];
             int opened = 0;
 
-            pthread_mutex_lock(&d->mutex);
-            if (d->fileCounter < d->fileCounterMax) {
-                d->fileCounter++;
+            pthread_mutex_lock(&g->mutex);
+            if (g->fileCounter < g->fileCounterMax) {
+                g->fileCounter++;
                 opened = 1;
-                sprintf(filename1, "%s", d->fileStrings[d->fileCounter - 1]);
+                sprintf(filename1, "%s", g->fileStrings[g->fileCounter - 1]);
             }
-            pthread_mutex_unlock(&d->mutex);
+            pthread_mutex_unlock(&g->mutex);
 
             if(opened==1){
+
                 FILE *fi1;
                 fi1 = fopen(filename1, "r");
                 fgets(num, 31, fi1);
@@ -51,11 +52,11 @@ void *f(void *arg)
                     fgets(num, 31, fi1);
                     x = atoi(num);
 
-                    for(int j=2; j <= d->nrRed + 1; j++)
+                    for(int j=2; j <= g->nrRed + 1; j++)
                     {
                         if(binarySearch(2, sqrt(x), x, j) == 1){
-                            d->MapperLists[thread_id][j - 2] = 
-                                insert(d->MapperLists[thread_id][j - 2], x);
+                            g->MapperLists[thread_id][j - 2] = 
+                                insert(g->MapperLists[thread_id][j - 2], x);
                         }
                     }
                 }
@@ -65,20 +66,20 @@ void *f(void *arg)
         }
     }
 
-    pthread_barrier_wait(&d->barrier);
+    pthread_barrier_wait(&g->barrier);
 
-    if(thread_id >= d->nrMap){
+    if(thread_id >= g->nrMap){
 
-        for(int i = 0; i < d->nrMap; i++){
-            SortedList inter = d->MapperLists[i][thread_id - d->nrMap];
+        for(int i = 0; i < g->nrMap; i++){
+            SortedList inter = g->MapperLists[i][thread_id - g->nrMap];
             while(inter != NULL){
-                d->ReducerLists[thread_id - d->nrMap] = 
-                    insert(d->ReducerLists[thread_id - d->nrMap], inter->value);
+                g->ReducerLists[thread_id - g->nrMap] = 
+                    insert(g->ReducerLists[thread_id - g->nrMap], inter->value);
                 inter=inter->next;
             }
         }
 
-        SortedList inter2 = d->ReducerLists[thread_id - d->nrMap];
+        SortedList inter2 = g->ReducerLists[thread_id - g->nrMap];
         int count = 1;
         if(inter2 != NULL) {
             while (inter2->next != NULL) {
@@ -94,10 +95,11 @@ void *f(void *arg)
         FILE *final;
         char filenamefinal[100];
 
-        sprintf(filenamefinal, "out%d.txt", thread_id - d->nrMap+2);
+        sprintf(filenamefinal, "out%d.txt", thread_id - g->nrMap+2);
         
         final=fopen(filenamefinal, "w");
         fprintf(final, "%d", count);
+        printf("%d\n", count);
         fclose(final);
         
     }	
@@ -110,14 +112,14 @@ int main(int argc, char *argv[]) {
     int R = atoi(argv[2]);
 
     SortedList **mapperLists = calloc(M, sizeof(SortedList *));
-    for(int i=0; i<M; i++){
+    for(int i = 0; i < M; i++){
         mapperLists[i] = calloc (R, sizeof(SortedList));
     }
 
     SortedList *reducerLists = calloc(R, sizeof(SortedList));
 
     int r;
-    char Ni[10];
+    char Nread[10];
     int N;
     pthread_t threads[M + R];
 	ThreadStruct arg[M + R];
@@ -126,11 +128,11 @@ int main(int argc, char *argv[]) {
 
     FILE *fi;
     fi = fopen(initFile, "r");
-    fgets(Ni, 10, fi);
-    N = atoi(Ni);
+    fgets(Nread, 10, fi);
+    N = atoi(Nread);
 
     char** fileStrings = calloc(N, sizeof(char *));
-    for(int i=0; i<N; i++){
+    for(int i = 0; i < N; i++){
         fileStrings[i] = calloc(100, sizeof(char));
     }
 
@@ -143,7 +145,7 @@ int main(int argc, char *argv[]) {
         .ReducerLists = reducerLists
     };
 
-    pthread_barrier_init(&data.barrier, NULL, M+R);
+    pthread_barrier_init(&data.barrier, NULL, M + R);
     pthread_mutex_init(&data.mutex, NULL);
 
     
@@ -152,7 +154,7 @@ int main(int argc, char *argv[]) {
     }
 
     for(int i = 0; i < M + R; i++){
-        arg[i].thread_id=i;
+        arg[i].thread_id = i;
         arg[i].data = &data;
         r = pthread_create(&threads[i], NULL, f, &arg[i]);
 
@@ -171,20 +173,20 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    for(int i=0; i<N; i++){
+    for(int i = 0; i < N; i++){
         free(fileStrings[i]);
     }
     free(fileStrings);
 
-    for(int i=0; i<M; i++){
-        for(int j=0; j<R; j++){
+    for(int i = 0; i < M; i++){
+        for(int j = 0; j < R; j++){
             freeSortedList(mapperLists[i][j]);
         }
         free(mapperLists[i]);
     }
     free(mapperLists);
 
-    for(int i=0; i<R; i++){
+    for(int i = 0; i < R; i++){
         freeSortedList(reducerLists[i]);
     }
     free(reducerLists);
